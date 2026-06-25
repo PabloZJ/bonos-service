@@ -13,6 +13,7 @@ Prefijo de rutas: /api/bonos  (para que nginx pueda enrutar por prefijo).
 import os
 from contextlib import asynccontextmanager
 
+from fastapi.responses import JSONResponse
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -148,6 +149,19 @@ def reclamar_bono(codigo: str, body: ReclamarRequest, usuario: dict = Depends(us
 
     return {"bono": bono["codigo"], "monto_otorgado": monto, "saldo": saldo}
 
+@app.get("/livez")
+def liveness():
+    return {"status": "ok", "service": "bonos-service"}
+
+@app.get("/readyz")
+def readiness():
+    try:
+        with conexion() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1")
+        return {"status": "ready", "service": "bonos-service"}
+    except Exception as e:
+        return JSONResponse(status_code=503, content={"status": "not ready", "error": str(e)})
 
 def _json(obj: dict) -> str:
     import json
